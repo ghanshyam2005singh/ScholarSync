@@ -3,13 +3,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getFirestore, query, where, getDocs, orderBy, doc, updateDoc, increment } from 'firebase/firestore';
-import { auth } from '@/lib/firebase';
+import { createClient } from '@supabase/supabase-js';
 import collegeList from "@/public/collegeList";
 import categoriesWithCourses from "@/public/courseList";
 import toast from 'react-hot-toast';
 import Navbar from '@/app/components/Navbar';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 interface Resource {
   id: string;
@@ -53,11 +56,11 @@ const ResourcesPage = () => {
   const collegeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setIsLoggedIn(!!user);
-    });
-    return () => unsubscribe();
-  }, []);
+  // Check Supabase Auth session
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    setIsLoggedIn(!!user);
+  });
+}, []);
 
   useEffect(() => {
     const found = categoriesWithCourses.find(
@@ -76,7 +79,7 @@ const ResourcesPage = () => {
       );
       setFilteredColleges(filtered);
     }
-  }, [collegeSearch]);
+  }, [collegeSearch, uniqueCollegeList]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -114,29 +117,30 @@ const ResourcesPage = () => {
     setResources([]);
     setSearched(false);
 
-    if (!college || !selectedCategory || !selectedCourse || !semester) {
+    if (!college || !selectedCourse || !semester) {
       toast.error('Please select all fields before searching.');
       return;
     }
 
     try {
       setLoading(true);
-      const db = getFirestore();
-      const q = query(
-        collection(db, 'resources'),
-        where('college', '==', college),
-        where('category', '==', selectedCategory),
-        where('course', '==', selectedCourse),
-        where('semester', '==', semester),
-        orderBy('created_at', 'desc')
-      );
-      const snap = await getDocs(q);
-      const data: Resource[] = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Resource[];
 
-      setResources(data);
+    // Flexible semester filter: match '5' or 'Sem_5'
+    const semesterVariants = [semester.trim(), `Sem_${semester.trim()}`];
+
+    const query = supabase
+      .from('resources')
+      .select('*')
+      .eq('college', college.trim())
+      .eq('course', selectedCourse.trim())
+      .in('semester', semesterVariants)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+      setResources(data || []);
       setSearched(true);
     } catch {
       setError('Failed to load resources');
@@ -180,54 +184,54 @@ const ResourcesPage = () => {
 
   // Read (view) handler
   const handleRead = async (resource: Resource) => {
-    setReadingResource(resource);
-    setPreviewLoading(true);
-    if (!hasReadResource(resource.id)) {
-      try {
-        const db = getFirestore();
-        await updateDoc(doc(db, 'resources', resource.id), {
-          read_count: increment(1)
-        });
-        markReadResource(resource.id);
-        setResources(prev =>
-          prev.map(r =>
-            r.id === resource.id
-              ? { ...r, read_count: (r.read_count || 0) + 1 }
-              : r
-          )
-        );
-      } catch {
-        // ignore error for now
-      }
+  setReadingResource(resource);
+  setPreviewLoading(true);
+  if (!hasReadResource(resource.id)) {
+    try {
+      await supabase
+        .from('resources')
+        .update({ read_count: (resource.read_count || 0) + 1 })
+        .eq('id', resource.id);
+      markReadResource(resource.id);
+      setResources(prev =>
+        prev.map(r =>
+          r.id === resource.id
+            ? { ...r, read_count: (r.read_count || 0) + 1 }
+            : r
+        )
+      );
+    } catch {
+      // ignore error for now
     }
-  };
+  }
+};
 
   // Download handler
   const handleDownload = async (resource: Resource) => {
-    if (!isLoggedIn) {
-      router.push('/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
-      return;
+  if (!isLoggedIn) {
+    router.push('/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+    return;
+  }
+  if (!hasDownloadedResource(resource.id)) {
+    try {
+      await supabase
+        .from('resources')
+        .update({ download_count: (resource.download_count || 0) + 1 })
+        .eq('id', resource.id);
+      markDownloadedResource(resource.id);
+      setResources(prev =>
+        prev.map(r =>
+          r.id === resource.id
+            ? { ...r, download_count: (r.download_count || 0) + 1 }
+            : r
+        )
+      );
+    } catch {
+      // ignore error for now
     }
-    if (!hasDownloadedResource(resource.id)) {
-      try {
-        const db = getFirestore();
-        await updateDoc(doc(db, 'resources', resource.id), {
-          download_count: increment(1)
-        });
-        markDownloadedResource(resource.id);
-        setResources(prev =>
-          prev.map(r =>
-            r.id === resource.id
-              ? { ...r, download_count: (r.download_count || 0) + 1 }
-              : r
-          )
-        );
-      } catch {
-        // ignore error for now
-      }
-    }
-    window.open(resource.drive_link, '_blank', 'noopener');
-  };
+  }
+  window.open(resource.drive_link, '_blank', 'noopener');
+};
 
   // Close reader
   const handleCloseReader = () => {
@@ -465,14 +469,14 @@ const ResourcesPage = () => {
                 </div>
               )}
               <iframe
-                src={`https://drive.google.com/file/d/${extractDriveId(readingResource.drive_link)}/preview`}
-                width="100%"
-                height="500"
-                allow="autoplay"
-                className="rounded border relative z-10"
-                onLoad={() => setPreviewLoading(false)}
-                style={{ background: "#f3f4f6" }}
-              ></iframe>
+  src={readingResource.drive_link}
+  width="100%"
+  height="500"
+  allow="autoplay"
+  className="rounded border relative z-10"
+  onLoad={() => setPreviewLoading(false)}
+  style={{ background: "#f3f4f6" }}
+></iframe>
             </div>
           </div>
         </div>
@@ -481,10 +485,5 @@ const ResourcesPage = () => {
   );
 };
 
-// Helper to extract Google Drive file ID from link
-function extractDriveId(link: string) {
-  const match = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : '';
-}
 
 export default ResourcesPage;
