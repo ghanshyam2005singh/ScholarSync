@@ -4,45 +4,49 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, Menu, X, UserCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { auth, db } from '@/lib/firebase';
-import { signOut, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase';
 
 const Navbar = () => {
   const pathname = usePathname();
   const [isOpen, setOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<import('@supabase/supabase-js').User | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
-
       if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setUserName(userData?.name || user.displayName || user.email?.split('@')[0] || 'Account');
-          } else {
-            setUserName(user.displayName || user.email?.split('@')[0] || 'Account');
-          }
-        } catch {
-          setUserName(user.displayName || user.email?.split('@')[0] || 'Account');
-        }
+        // Optionally fetch user profile from Supabase table
+        const { data: profile } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+        setUserName(
+          profile?.name ||
+          user.user_metadata?.name ||
+          user.email?.split('@')[0] ||
+          'Account'
+        );
       } else {
         setUserName('');
       }
-
       setLoading(false);
+    };
+    getUser();
+    // Optionally, subscribe to auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      getUser();
     });
-
-    return () => unsubscribe();
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     setUser(null);
     setUserName('');
   };
