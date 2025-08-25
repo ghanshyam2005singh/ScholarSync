@@ -1,14 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { auth } from '@/lib/firebase';
-import { getFirestore, collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
-import { User } from 'firebase/auth';
+import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Navbar from '@/app/components/Navbar';
 import Image from 'next/image';
-
-const firestore = getFirestore();
 
 interface Upload {
   id: string;
@@ -20,7 +16,7 @@ interface Upload {
   drive_link: string;
   download_count: number;
   read_count?: number;
-  created_at: string;
+  created_at: string | { seconds: number; nanoseconds: number };
 }
 
 interface UserProfile {
@@ -33,33 +29,52 @@ interface UserProfile {
 }
 
 const AccountPage = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    email: string;
+    user_metadata?: {
+      avatar_url?: string;
+      name?: string;
+    };
+  } | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [loadingUploads, setLoadingUploads] = useState(true);
   const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         window.location.href = '/login';
       } else {
-        setUser(user);
+        setUser({
+          id: user.id,
+          email: user.email ?? '',
+          user_metadata: {
+            avatar_url: user.user_metadata?.avatar_url,
+            name: user.user_metadata?.name,
+          },
+        });
         setLoadingUser(false);
 
-        // Fetch user profile from Firestore
+        // Fetch user profile from Supabase table
         try {
-          const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-          if (userDoc.exists()) {
-            setProfile(userDoc.data() as UserProfile);
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          if (userProfile) {
+            setProfile(userProfile as UserProfile);
           }
         } catch {
           toast.error('Could not load profile. Please try again later.');
           setProfile(null);
         }
       }
-    });
-    return () => unsubscribe();
+    };
+    getUser();
   }, []);
 
   useEffect(() => {
@@ -67,42 +82,26 @@ const AccountPage = () => {
     setLoadingUploads(true);
     const fetchUploads = async () => {
       try {
-        let q = query(
-          collection(firestore, 'resources'),
-          where('uploaderId', '==', user.uid)
+        let { data: uploadsArr } = await supabase
+          .from('resources')
+          .select('*')
+          .eq('uploaderId', user.id);
+
+        if (!uploadsArr || uploadsArr.length === 0) {
+          const { data: uploadsByEmail } = await supabase
+            .from('resources')
+            .select('*')
+            .eq('uploaderId', user.email);
+          uploadsArr = uploadsByEmail || [];
+        }
+
+        setUploads(
+          (uploadsArr || []).map((u: Upload) => ({
+            ...u,
+          }))
         );
-        let querySnapshot = await getDocs(q);
-        let uploadsArr = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...(doc.data() as Omit<Upload, 'id'>),
-        }));
-
-        if (uploadsArr.length === 0) {
-          q = query(
-            collection(firestore, 'resources'),
-            where('uploaderId', '==', user.email)
-          );
-          querySnapshot = await getDocs(q);
-          uploadsArr = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...(doc.data() as Omit<Upload, 'id'>),
-          }));
-        }
-
-        setUploads(uploadsArr);
-      } catch (err: unknown) {
-        if (typeof err === 'object' && err !== null && 'code' in err) {
-          const errorWithCode = err as { code?: string };
-          if (errorWithCode.code === 'permission-denied') {
-            toast.error('You do not have permission to view uploads.');
-          } else if (errorWithCode.code === 'unavailable') {
-            toast.error('Network error. Please check your connection.');
-          } else {
-            toast.error('Something went wrong while loading uploads.');
-          }
-        } else {
-          toast.error('Something went wrong while loading uploads.');
-        }
+      } catch {
+        toast.error('Something went wrong while loading uploads.');
       }
       setLoadingUploads(false);
     };
@@ -120,22 +119,11 @@ const AccountPage = () => {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await deleteDoc(doc(firestore, 'resources', id));
+                  await supabase.from('resources').delete().eq('id', id);
                   setUploads(uploads.filter(u => u.id !== id));
                   toast.success('Upload deleted.');
-                } catch (err: unknown) {
-                  if (typeof err === 'object' && err !== null && 'code' in err) {
-                    const errorWithCode = err as { code?: string };
-                    if (errorWithCode.code === 'permission-denied') {
-                      toast.error('You do not have permission to delete this upload.');
-                    } else if (errorWithCode.code === 'unavailable') {
-                      toast.error('Network error. Please try again.');
-                    } else {
-                      toast.error('Failed to delete upload. Please try again.');
-                    }
-                  } else {
-                    toast.error('Failed to delete upload. Please try again.');
-                  }
+                } catch {
+                  toast.error('Failed to delete upload. Please try again.');
                 }
               }}
             >
@@ -178,15 +166,15 @@ const AccountPage = () => {
         <div className="mb-10 bg-white rounded-2xl shadow-xl p-8 border border-[#e0e0e0]">
           <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
             <div className="w-20 h-20 rounded-full bg-[#e0e7ff] flex items-center justify-center text-4xl text-[#2e3192] overflow-hidden shadow">
-              {user?.photoURL ? (
-                <Image src={user.photoURL} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
+              {user?.user_metadata?.avatar_url ? (
+                <Image src={user.user_metadata.avatar_url} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
               ) : (
-                (profile?.name?.[0] || user?.displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()
+                (profile?.name?.[0] || user?.user_metadata?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()
               )}
             </div>
             <div className="flex-1 text-center sm:text-left">
               <div className="font-bold text-2xl text-[#2e3192]">
-                {profile?.name || user?.displayName || user?.email || 'No Name'}
+                {profile?.name || user?.user_metadata?.name || user?.email || 'No Name'}
               </div>
               <div className="text-gray-600 text-sm">{profile?.email || user?.email}</div>
               <div className="flex gap-2 mt-2 flex-wrap justify-center sm:justify-start">
