@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase'; // <-- Import Supabase client
 import collegeList from "@/public/collegeList";
 import categoriesWithCourses from "@/public/courseList";
 import toast from 'react-hot-toast';
@@ -37,15 +37,15 @@ const UploadPage = () => {
 
   // Redirect if not logged in
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) {
-        window.location.href = '/login';
-      } else {
-        setUploaderId(user.uid);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  // Check Supabase Auth session
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (!user) {
+      window.location.href = '/login';
+    } else {
+      setUploaderId(user.id);
+    }
+  });
+}, []);
 
   useEffect(() => {
     const found = categoriesWithCourses.find(
@@ -65,7 +65,7 @@ const UploadPage = () => {
       );
       setFilteredColleges(filtered);
     }
-  }, [collegeSearch]); // Removed uniqueCollegeList from dependencies
+  }, [collegeSearch, uniqueCollegeList]); // Added uniqueCollegeList to dependencies
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -108,21 +108,32 @@ const UploadPage = () => {
     setShowCollegeDropdown(true);
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agreed) {
-      setShowDisclaimer(true);
-      return;
-    }
-    
-    if (!title || !college || !selectedCategory || !selectedCourse || !semester || !file) {
-      setError('Please fill in all fields');
-      toast.error('Please fill in all fields');
-      return;
-    }
+ const handleUpload = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!agreed) {
+    setShowDisclaimer(true);
+    return;
+  }
 
-    // Get Firebase ID token for authentication
-    const user = auth.currentUser;
+  if (!title || !college || !selectedCategory || !selectedCourse || !semester || !file) {
+    setError('Please fill in all fields');
+    toast.error('Please fill in all fields');
+    return;
+  }
+
+   // Get Supabase access token for authentication
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+
+  if (!accessToken) {
+    setError('Please log in to upload');
+    toast.error('Please log in to upload');
+    return;
+  }
+
+
+    // Get Supabase user for authentication
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setError('Please log in to upload');
       toast.error('Please log in to upload');
@@ -135,23 +146,20 @@ const UploadPage = () => {
     setUploadStatus('uploading');
 
     try {
-      // Get ID token for authentication
-      const idToken = await user.getIdToken();
-      
+      // Use Supabase access token for authentication
       const formData = new FormData();
-      formData.append('title', title);
-      formData.append('college', college);
-      formData.append('category', selectedCategory);
-      formData.append('course', selectedCourse);
-      formData.append('semester', semester);
-      formData.append('subject', title);
-      formData.append('file', file!);
-      if (uploaderId) formData.append('uploaderId', uploaderId);
+  formData.append('title', title);
+  formData.append('college', college);
+  formData.append('category', selectedCategory);
+  formData.append('course', selectedCourse);
+  formData.append('semester', semester);
+  formData.append('subject', title);
+  formData.append('file', file!);
+  if (uploaderId) formData.append('uploaderId', uploaderId);
 
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/upload');
-      
-      xhr.setRequestHeader('Authorization', `Bearer ${idToken}`);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/upload');
+  xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
       
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
