@@ -2,9 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import Navbar from '../components/Navbar';
 
 const SignupPage = () => {
@@ -16,7 +14,7 @@ const SignupPage = () => {
   const [userType, setUserType] = useState('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,33 +28,37 @@ const SignupPage = () => {
     }
 
     try {
-      // Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // Create Supabase Auth user (no email link verification)
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            userType,
+          }
+        }
+      });
 
-      // Store user in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      if (signUpError) throw signUpError;
+
+      // Insert user profile into Supabase table
+      await supabase.from('users').insert([{
+        id: data.user?.id,
         name,
         email,
         userType,
         isVerified: false,
         isSuspicious: false,
-        createdAt: serverTimestamp()
-      });
+        createdAt: new Date().toISOString()
+      }]);
 
-      // Send email verification
-      await sendEmailVerification(user);
-
-      // Sign out the user so they can't use the app until verified
-      await signOut(auth);
-
-      setVerificationSent(true);
+      setSignupSuccess(true);
       setName('');
       setEmail('');
       setPassword('');
       setUserType('student');
     } catch (err: unknown) {
-      console.error(err);
       if (err instanceof Error) {
         setError(err.message || 'Signup failed. Try again.');
       } else {
@@ -73,10 +75,10 @@ const SignupPage = () => {
       <div className="max-w-lg w-full p-8 bg-white rounded-lg shadow-xl justify-center items-center mx-auto mt-10 border border-[#e0e0e0]">
         <h1 className="text-4xl font-extrabold text-center text-[#2e3192] mb-8">Create Your Account</h1>
 
-        {verificationSent ? (
+        {signupSuccess ? (
           <div className="text-center">
             <p className="text-green-600 text-lg font-semibold mb-4">
-              Verification email sent! Please check your inbox and verify your email before logging in.
+              Account created! You can now log in.
             </p>
             <button
               className="bg-[#2e3192] text-white px-6 py-3 rounded-lg shadow-lg hover:bg-[#1b1f5e] transition"
@@ -87,7 +89,6 @@ const SignupPage = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Input */}
             <input
               type="text"
               placeholder="Full Name"
@@ -95,8 +96,6 @@ const SignupPage = () => {
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-[#2e3192] focus:outline-none transition-all"
             />
-
-            {/* Email Input */}
             <input
               type="email"
               placeholder="Email Address"
@@ -104,8 +103,6 @@ const SignupPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-[#2e3192] focus:outline-none transition-all"
             />
-
-            {/* Password Input */}
             <input
               type="password"
               placeholder="Create Password"
@@ -113,8 +110,6 @@ const SignupPage = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg shadow-sm focus:ring-2 focus:ring-[#2e3192] focus:outline-none transition-all"
             />
-
-            {/* User Type Selector */}
             <select
               value={userType}
               onChange={(e) => setUserType(e.target.value)}
@@ -123,11 +118,7 @@ const SignupPage = () => {
               <option value="student">Student</option>
               <option value="uploader">Uploader</option>
             </select>
-
-            {/* Error */}
             {error && <p className="text-red-500 text-sm">{error}</p>}
-
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -135,8 +126,6 @@ const SignupPage = () => {
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-
-            {/* Already have account? */}
             <div className="text-center mt-4">
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
