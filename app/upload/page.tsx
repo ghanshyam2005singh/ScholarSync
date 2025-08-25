@@ -174,57 +174,70 @@ const UploadPage = () => {
           setUploadStatus('done');
           setUploadProgress(100);
           
-          if (xhr.status === 200) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              if (data.success) {
-                toast.success('Upload successful!');
-                setTitle('');
-                setCollege('');
-                setCollegeSearch('');
-                setSelectedCategory('');
-                setSelectedCourse('');
-                setSemester('');
-                setFile(null);
-                setAgreed(false);
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = '';
-                }
-                setTimeout(() => setUploadStatus('idle'), 1500);
-              } else {
-                setError(data.error || 'Upload failed');
-                toast.error(data.error || 'Upload failed');
-                setUploadStatus('idle');
+        if (xhr.status === 200) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (data.success) {
+              toast.success('Upload successful!');
+              setTitle('');
+              setCollege('');
+              setCollegeSearch('');
+              setSelectedCategory('');
+              setSelectedCourse('');
+              setSemester('');
+              setFile(null);
+              setAgreed(false);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
               }
-            } catch {
-              setError('Upload failed - Invalid response');
+              setTimeout(() => setUploadStatus('idle'), 1500);
+            } else {
+              setError('Upload failed');
               toast.error('Upload failed');
               setUploadStatus('idle');
             }
-          } else {
-            setError(`Upload failed - Status: ${xhr.status}`);
+          } catch {
+            setError('Upload failed');
             toast.error('Upload failed');
             setUploadStatus('idle');
           }
-        }, 1200);
-      };
-      
-      xhr.onerror = () => {
-        setLoading(false);
-        setError('Network error - Upload failed');
-        toast.error('Network error');
-        setUploadStatus('idle');
-      };
-      
-      xhr.send(formData);
-    } catch (err) {
+        } else if (xhr.status === 413) {
+          setError('File is too large. Please upload a file smaller than 20MB.');
+          toast.error('File too large. Try compressing or splitting your file.');
+          setUploadStatus('idle');
+        } else if (xhr.status === 504 || xhr.status === 502 || xhr.status === 503) {
+          setError('Server is temporarily unavailable. Please try again later.');
+          toast.error('Server error. Try again in a few minutes.');
+          setUploadStatus('idle');
+        } else if (xhr.status === 0) {
+          setError('Network error. Please check your internet connection.');
+          toast.error('Network error.');
+          setUploadStatus('idle');
+        } else {
+          setError(`Upload failed - Status: ${xhr.status}`);
+          toast.error('Upload failed');
+          setUploadStatus('idle');
+        }
+      }, 1200);
+    };
+
+    xhr.onerror = () => {
       setLoading(false);
-      setError('Upload failed');
-      toast.error('Upload failed');
+      setError('Network or server error - Upload failed. Supabase may be offline.');
+      toast.error('Upload failed. Try again later.');
       setUploadStatus('idle');
-      console.error('Upload error:', err);
-    }
-  };
+    };
+
+    xhr.send(formData);
+  } catch (err) {
+    setLoading(false);
+    setError('Upload failed. Please try again later.');
+    toast.error('Upload failed');
+    setUploadStatus('idle');
+    console.error('Upload error:', err);
+  }
+};
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -462,7 +475,24 @@ const UploadPage = () => {
               )}
 
               {/* Error Message */}
-              {error && <p className="text-red-500 text-sm mt-2 break-words">{error}</p>}
+              {error && (
+  <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 my-2 text-sm">
+    {error.includes('File is too large') && (
+      <div>
+        <strong>File too large:</strong> Try compressing your file or splitting it into smaller parts.<br />
+        <a href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" className="underline text-blue-600">Compress PDF online</a>
+      </div>
+    )}
+    {error.includes('Server is temporarily unavailable') && (
+      <div>
+        <strong>Server issue:</strong> Supabase may be offline. Please try again in a few minutes.
+      </div>
+    )}
+    {!error.includes('File is too large') && !error.includes('Server is temporarily unavailable') && (
+      <span>{error}</span>
+    )}
+  </div>
+)}
 
               {/* Submit Button */}
               <button

@@ -348,7 +348,27 @@ const ResourcesPage = () => {
             </form>
 
             {loading && <p className="text-center text-[#2e3192] py-4">Loading resources...</p>}
-            {error && <p className="text-center text-red-600 py-4">{error}</p>}
+            {error && (
+  <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 my-2 text-sm flex flex-col items-center">
+    <span>
+      {error.includes('Supabase') || error.includes('Failed to load resources')
+        ? (
+          <>
+            <strong>Service Unavailable:</strong> Our backend is temporarily offline.<br />
+            Please tell owner to pay to start server.<br />
+            <button
+              className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+          </>
+        )
+        : error
+      }
+    </span>
+  </div>
+)}
 
             {searched && resources.length === 0 && !loading && !error && (
               <div className="text-center mt-10 py-8">
