@@ -2,8 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import Navbar from '../components/Navbar';
 
 // Separate component for the login form that uses useSearchParams
@@ -11,7 +10,7 @@ const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams?.get('redirect') || '/upload';
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,19 +29,27 @@ const LoginForm = () => {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) throw signInError;
 
       // Check if email is verified
-      if (!auth.currentUser?.emailVerified) {
+      if (!data.user?.email_confirmed_at) {
         setError('Please verify your email before logging in.');
         setLoading(false);
         return;
       }
 
-      // Redirect to the intended page
       router.push(redirectTo);
-    } catch {
-      setError('Invalid email or password. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Invalid email or password. Please try again.');
+      } else {
+        setError('Invalid email or password. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -58,7 +65,10 @@ const LoginForm = () => {
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetError) throw resetError;
       setResetSent(true);
     } catch {
       setError('Failed to send reset email. Please check your email address.');

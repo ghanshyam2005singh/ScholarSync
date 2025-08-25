@@ -1,24 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { auth } from '@/lib/firebase';
-import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase';
 import Navbar from '@/app/components/Navbar';
 import toast from 'react-hot-toast';
 
 type User = {
   id: string;
   name?: string;
-  displayName?: string;
   email: string;
   userType?: string;
   isVerified?: boolean;
   isSuspicious?: boolean;
-  createdAt?: Date | { seconds: number } | string;
+  createdAt?: string | Date;
 };
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL as string;
-const firestore = getFirestore();
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -34,44 +31,38 @@ export default function AdminPage() {
     unique_downloads?: number;
     read_count?: number;
     unique_reads?: number;
-    created_at?: Date | { seconds: number } | string;
+    created_at?: string | Date;
     drive_link?: string;
   };
-  
+
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
-  const totalReads = resources.reduce((sum, r) => sum + (r.read_count || 0), 0);
-  const totalUniqueReads = resources.reduce((sum, r) => sum + (r.unique_reads || 0), 0);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (u) => {
-      if (!u || u.email !== ADMIN_EMAIL) {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.email !== ADMIN_EMAIL) {
         toast.error('Access denied. Admins only.');
         window.location.replace('/');
         return;
       }
       try {
-        const usersSnap = await getDocs(collection(firestore, 'users'));
-        setUsers(
-          usersSnap.docs
-            .map(doc => {
-              const data = doc.data();
-              return { id: doc.id, ...data, email: data.email ?? '' } as User;
-            })
-            .filter(u => u.email)
-        );
-        const resSnap = await getDocs(collection(firestore, 'resources'));
-        setResources(resSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const { data: usersData } = await supabase.from('users').select('*');
+        setUsers(usersData || []);
+        const { data: resourcesData } = await supabase.from('resources').select('*');
+        setResources(resourcesData || []);
       } catch {
         toast.error('Failed to load admin data.');
       }
       setLoading(false);
-    });
-    return () => unsubscribe();
+    };
+    checkAdmin();
   }, []);
 
   const totalDownloads = resources.reduce((sum, r) => sum + (r.download_count || 0), 0);
   const totalUniqueDownloads = resources.reduce((sum, r) => sum + (r.unique_downloads || 0), 0);
+  const totalReads = resources.reduce((sum, r) => sum + (r.read_count || 0), 0);
+  const totalUniqueReads = resources.reduce((sum, r) => sum + (r.unique_reads || 0), 0);
 
   const handleDeleteUser = async (userId: string) => {
     toast(
@@ -84,7 +75,7 @@ export default function AdminPage() {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await deleteDoc(doc(firestore, 'users', userId));
+                  await supabase.from('users').delete().eq('id', userId);
                   setUsers(users.filter(u => u.id !== userId));
                   toast.success('User deleted.');
                 } catch {
@@ -109,7 +100,7 @@ export default function AdminPage() {
 
   const handleBanUser = async (userId: string) => {
     try {
-      await updateDoc(doc(firestore, 'users', userId), { isSuspicious: true });
+      await supabase.from('users').update({ isSuspicious: true }).eq('id', userId);
       setUsers(users.map(u => u.id === userId ? { ...u, isSuspicious: true } : u));
       toast.success('User banned.');
     } catch {
@@ -119,7 +110,7 @@ export default function AdminPage() {
 
   const handleUnbanUser = async (userId: string) => {
     try {
-      await updateDoc(doc(firestore, 'users', userId), { isSuspicious: false });
+      await supabase.from('users').update({ isSuspicious: false }).eq('id', userId);
       setUsers(users.map(u => u.id === userId ? { ...u, isSuspicious: false } : u));
       toast.success('User unbanned.');
     } catch {
@@ -138,7 +129,7 @@ export default function AdminPage() {
               onClick={async () => {
                 toast.dismiss(t.id);
                 try {
-                  await deleteDoc(doc(firestore, 'resources', resourceId));
+                  await supabase.from('resources').delete().eq('id', resourceId);
                   setResources(resources.filter(r => r.id !== resourceId));
                   toast.success('Resource deleted.');
                 } catch {
@@ -221,7 +212,7 @@ export default function AdminPage() {
             <tbody>
               {users.map(u => (
                 <tr key={u.id} className="border-t hover:bg-[#f4f6fb] font-medium text-gray-800">
-                  <td className="p-2">{u.name || u.displayName || '-'}</td>
+                  <td className="p-2">{u.name || '-'}</td>
                   <td className="p-2 break-all">{u.email}</td>
                   <td className="p-2 capitalize">{u.userType || '-'}</td>
                   <td className="p-2">{u.isVerified ? '✅' : '❌'}</td>
