@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase'; // <-- Import Supabase client
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { supabase } from '@/lib/supabase';
 import collegeList from "@/public/collegeList";
 import categoriesWithCourses from "@/public/courseList";
 import toast from 'react-hot-toast';
@@ -32,20 +32,19 @@ const UploadPage = () => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
-  // Move uniqueCollegeList outside of useEffect to avoid dependency issues
-  const uniqueCollegeList = Array.from(new Set(collegeList));
+  // FIXED: Use useMemo to prevent recreation on every render
+  const uniqueCollegeList = useMemo(() => Array.from(new Set(collegeList)), []);
 
   // Redirect if not logged in
   useEffect(() => {
-  // Check Supabase Auth session
-  supabase.auth.getUser().then(({ data: { user } }) => {
-    if (!user) {
-      window.location.href = '/login';
-    } else {
-      setUploaderId(user.id);
-    }
-  });
-}, []);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        window.location.href = '/login';
+      } else {
+        setUploaderId(user.id);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const found = categoriesWithCourses.find(
@@ -55,7 +54,7 @@ const UploadPage = () => {
     setSelectedCourse('');
   }, [selectedCategory]);
 
-  // Filter colleges based on search - FIXED: Removed uniqueCollegeList from dependencies
+  // FIXED: Now uniqueCollegeList is stable
   useEffect(() => {
     if (collegeSearch.trim() === '') {
       setFilteredColleges(uniqueCollegeList);
@@ -65,12 +64,17 @@ const UploadPage = () => {
       );
       setFilteredColleges(filtered);
     }
-  }, [collegeSearch, uniqueCollegeList]); // Added uniqueCollegeList to dependencies
+  }, [collegeSearch, uniqueCollegeList]);
 
-  // Close dropdown when clicking outside
+  // FIXED: Close dropdown when clicking outside
   useEffect(() => {
+    if (!showCollegeDropdown) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (collegeDropdownRef.current && !collegeDropdownRef.current.contains(event.target as Node)) {
+      if (
+        collegeDropdownRef.current &&
+        !collegeDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowCollegeDropdown(false);
       }
     };
@@ -79,7 +83,7 @@ const UploadPage = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showCollegeDropdown]);
 
   const isFormValid =
     title &&

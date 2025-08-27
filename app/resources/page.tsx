@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
@@ -34,7 +34,7 @@ interface Resource {
 
 const ResourcesPage = () => {
   const router = useRouter();
-  const uniqueCollegeList = Array.from(new Set(collegeList));
+  const uniqueCollegeList = useMemo(() => Array.from(new Set(collegeList)), []);
   
   const [college, setCollege] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -81,18 +81,24 @@ const ResourcesPage = () => {
     }
   }, [collegeSearch, uniqueCollegeList]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (collegeDropdownRef.current && !collegeDropdownRef.current.contains(event.target as Node)) {
-        setShowCollegeDropdown(false);
-      }
-    };
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      collegeDropdownRef.current &&
+      !collegeDropdownRef.current.contains(event.target as Node) &&
+      showCollegeDropdown // Only update if open
+    ) {
+      setShowCollegeDropdown(false);
+    }
+  };
 
+  if (showCollegeDropdown) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }
+}, [showCollegeDropdown]);
 
   const handleCollegeSelect = (selectedCollege: string) => {
     setCollege(selectedCollege);
