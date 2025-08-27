@@ -463,53 +463,60 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* File Reader Modal */}
-      {readingResource && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Blurred background */}
-          <div
-            className="absolute inset-0 backdrop-blur-md bg-white/30"
-            style={{ zIndex: 10 }}
-            onClick={handleCloseReader}
-          />
-          {/* Modal */}
-          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] p-6 relative flex flex-col z-20">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-2xl z-30"
-              onClick={handleCloseReader}
-              aria-label="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-bold mb-4 text-[#2e3192] pr-8 break-words">{readingResource.subject || readingResource.title}</h2>
-            <div className="flex-1 min-h-[400px] flex items-center justify-center relative">
-              {previewLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-30">
-                  <div className="flex flex-col items-center">
-                    <svg className="animate-spin h-8 w-8 text-[#2e3192] mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                    <span className="text-[#2e3192] font-semibold">Loading preview...</span>
-                  </div>
-                </div>
-              )}
-              <iframe
-  src={readingResource.drive_link}
-  width="100%"
-  height="500"
-  allow="autoplay"
-  className="rounded border relative z-10"
-  onLoad={() => setPreviewLoading(false)}
-  style={{ background: "#f3f4f6" }}
-></iframe>
+       {/* File Reader Modal */}
+            {readingResource && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    {/* Blurred background */}
+    <div
+      className="absolute inset-0 backdrop-blur-md bg-white/30"
+      style={{ zIndex: 10 }}
+      onClick={handleCloseReader}
+    />
+    {/* Modal */}
+    <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] p-6 relative flex flex-col z-20">
+      <button
+        className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-2xl z-30"
+        onClick={handleCloseReader}
+        aria-label="Close"
+      >
+        &times;
+      </button>
+      <h2 className="text-xl font-bold mb-4 text-[#2e3192] pr-8 break-words">{readingResource.subject || readingResource.title}</h2>
+      <div className="flex-1 min-h-[400px] flex items-center justify-center relative">
+        {previewLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-30">
+            <div className="flex flex-col items-center">
+              <svg className="animate-spin h-8 w-8 text-[#2e3192] mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+              </svg>
+              <span className="text-[#2e3192] font-semibold">Loading preview...</span>
             </div>
           </div>
+        )}
+        {/* Mobile fallback */}
+        <div className="block md:hidden w-full text-center py-8">
+          <p className="text-gray-600 mb-4 font-semibold">
+            Preview not supported on mobile.<br />
+            Please open on desktop for preview.
+          </p>
         </div>
-      )}
+        {/* Desktop iframe */}
+        <iframe
+          src={readingResource.drive_link}
+          width="100%"
+          height="500"
+          allow="autoplay"
+          className="rounded border relative z-10 hidden md:block"
+          onLoad={() => setPreviewLoading(false)}
+          style={{ background: "#f3f4f6" }}
+        />
+      </div>
     </div>
-  );
+  </div>
+)}
+          </div>
+ );
 };
-
 
 export default ResourcesPage;
