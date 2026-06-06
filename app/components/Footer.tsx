@@ -8,12 +8,12 @@ const Footer = () => {
       </p>
       <p>
         <a
-          href="https://iron-industry.tech"
+          href="https://ghanshyamsingh-dev.vercel.app/"
           target="_blank"
           rel="noopener noreferrer"
           className="underline text-[#e94f37] hover:text-[#2e3192] transition"
         >
-          iron-industry.tech
+          Ghanshyam Singh
         </a>
       </p>
     </footer>

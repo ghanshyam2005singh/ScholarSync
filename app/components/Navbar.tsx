@@ -114,7 +114,7 @@ const Navbar = () => {
               </div>
             </div>
           )}
-          <Link href="https://iron-industry.tech/" target="_blank">
+          <Link href="https://ghanshyamsingh-dev.vercel.app/" target="_blank">
             <button
               className="flex items-center gap-2 bg-[#e94f37] text-white px-4 py-1.5 rounded hover:bg-[#2e3192] hover:text-white text-sm shadow-md transition-all"
             >
@@ -176,7 +176,7 @@ const Navbar = () => {
                 <div className="h-7 w-20 bg-gray-300 rounded"></div>
               </div>
             )}
-            <Link href="https://iron-industry.tech/" target="_blank" onClick={() => setOpen(false)}>
+            <Link href="https://ghanshyamsingh-dev.vercel.app/" target="_blank" onClick={() => setOpen(false)}>
               <button
                 className="flex items-center gap-2 bg-[#e94f37] text-white px-4 py-1.5 rounded hover:bg-[#2e3192] hover:text-white text-sm shadow-md transition-all w-full text-left"
               >

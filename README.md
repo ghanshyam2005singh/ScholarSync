@@ -87,28 +87,22 @@ Deploy the application using platforms like Vercel or Azure. Ensure environment 
 
 ---
 
-## 🌐 About Iron Industry Tech
+## 🌐 About Ghanshyam Singh
 
-**Iron Industry Tech** is a forward-thinking tech startup dedicated to creating impactful products that solve real-world problems. **Padh-le-Bhai** is one of our flagship products, designed to simplify access to educational resources for students worldwide.
+**Ghanshyam Singh** is a forward-thinking developer dedicated to creating impactful products that solve real-world problems. **Padh-le-Bhai** is one of our flagship products, designed to simplify access to educational resources for students worldwide.
 
-Visit us at [iron-industry.tech](https://iron-industry.tech) to learn more about our mission and other innovative solutions.
+Visit us at [ghanshyamsingh-dev.vercel.app](https://ghanshyamsingh-dev.vercel.app/) to learn more about our mission and other innovative solutions.
 
 ---
 
 ## 📌 Legal
 
-Users who upload inappropriate or copyrighted content may face legal action under the rights of **Iron Industry**.
-
----
-
-## 📬 Contact
-
-For any issues or support, please contact: `outlercodie.com@gmail.com`
+Users who upload inappropriate or copyrighted content may face legal action under the rights of **Ghanshyam Singh**.
 
 ---
 
 ## 🪪 License
 
-© 2025 Iron Industry. All rights reserved.
+© 2026 Ghanshyam Singh. All rights reserved.
 
 ---

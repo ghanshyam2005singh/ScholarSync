@@ -70,7 +70,7 @@ export default function Home() {
           About Padh-le-Bhai
         </h2>
         <p className="max-w-3xl mx-auto text-lg text-gray-700 mb-8 text-center">
-          <strong>Padh-le-Bhai</strong> is a platform by <a href="https://iron-industry.tech" target="_blank" className="underline text-[#e94f37]">Iron-Industry</a> to make study resources accessible for everyone. Join our community and help students succeed together.
+          <strong>Padh-le-Bhai</strong> is a platform by <a href="https://ghanshyamsingh-dev.vercel.app/" target="_blank" className="underline text-[#e94f37]">Ghanshyam Singh</a> to make study resources accessible for everyone. Join our community and help students succeed together.
         </p>
         <div className="flex justify-center gap-4">
           <Link href="/resources">
