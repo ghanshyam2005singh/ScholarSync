@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageCircle, Menu, X, UserCircle } from 'lucide-react';
+import { BookOpen, Menu, X, UserCircle, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -18,7 +18,6 @@ const Navbar = () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
-        // Optionally fetch user profile from Supabase table
         const { data: profile } = await supabase
           .from('users')
           .select('name')
@@ -36,157 +35,167 @@ const Navbar = () => {
       setLoading(false);
     };
     getUser();
-    // Optionally, subscribe to auth changes
     const { data: listener } = supabase.auth.onAuthStateChange(() => {
       getUser();
     });
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
+    return () => listener?.subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setUserName('');
+    setOpen(false);
   };
 
   const isActive = (path: string) =>
-    pathname === path ? 'text-[#2e3192] font-semibold' : 'text-gray-700';
+    pathname === path
+      ? 'text-[#2e3192] font-semibold border-b-2 border-[#2e3192] pb-0.5'
+      : 'text-gray-600 hover:text-[#2e3192] transition-colors';
+
+  const isMobileActive = (path: string) =>
+    pathname === path
+      ? 'text-[#2e3192] font-semibold bg-[#f0f4ff] rounded-lg px-3 py-2'
+      : 'text-gray-600 hover:text-[#2e3192] hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors';
 
   return (
-    <nav className="bg-white border-b border-[#e0e0e0] shadow-sm px-4 md:px-8 py-4 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between relative">
+    <nav className="bg-white border-b border-[#e8eaf0] shadow-sm px-4 md:px-8 py-3.5 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="text-xl font-bold text-[#2e3192] tracking-tight">
-          Padh-le-Bhai
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-lg bg-[#2e3192] flex items-center justify-center group-hover:bg-[#1b1f5e] transition-colors">
+            <BookOpen size={16} className="text-white" />
+          </div>
+          <span className="text-lg font-bold text-[#2e3192] tracking-tight group-hover:text-[#1b1f5e] transition-colors">
+            ScholarSync
+          </span>
         </Link>
 
-        {/* Hamburger for mobile */}
-        <button
-          className="md:hidden ml-auto p-1 rounded focus:outline-none focus:ring-2 focus:ring-[#2e3192]"
-          onClick={() => setOpen((prev) => !prev)}
-          aria-label="Toggle Menu"
-        >
-          {isOpen
-            ? <X size={28} className="text-[#2e3192]" />
-            : <Menu size={28} className="text-[#2e3192]" />}
-        </button>
-
         {/* Desktop Links */}
-        <div className="hidden md:flex flex-row gap-6 text-base items-center flex-wrap justify-end">
+        <div className="hidden md:flex flex-row gap-6 text-sm items-center">
           <Link href="/resources" className={isActive('/resources')}>
             Resources
           </Link>
           <Link href="/upload" className={isActive('/upload')}>
             Upload
           </Link>
+
+          {loading && (
+            <div className="animate-pulse flex items-center gap-3">
+              <div className="h-4 w-14 bg-gray-200 rounded" />
+              <div className="h-8 w-20 bg-gray-200 rounded-lg" />
+            </div>
+          )}
+
           {!user && !loading && (
             <>
               <Link href="/login" className={isActive('/login')}>
                 Login
               </Link>
               <Link href="/signup">
-                <button className="bg-[#2e3192] text-white px-4 py-1.5 rounded hover:bg-[#1b1f5e] text-sm transition">
+                <button className="bg-[#2e3192] text-white px-4 py-2 rounded-lg hover:bg-[#1b1f5e] text-sm transition-colors font-medium">
                   Sign Up
                 </button>
               </Link>
             </>
           )}
+
           {user && !loading && (
             <>
-              <Link href="/account" className="flex items-center gap-2">
-                <UserCircle size={28} className="text-[#2e3192]" />
-                <span className="hidden md:inline text-gray-700 text-sm">{userName}</span>
+              <Link href="/account" className="flex items-center gap-2 group">
+                <UserCircle size={26} className="text-[#2e3192] group-hover:text-[#1b1f5e] transition-colors" />
+                <span className="text-gray-700 text-sm font-medium group-hover:text-[#2e3192] transition-colors">
+                  {userName}
+                </span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="ml-2 bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 text-sm transition"
+                className="flex items-center gap-1.5 text-gray-500 hover:text-red-500 text-sm transition-colors font-medium"
               >
+                <LogOut size={16} />
                 Logout
               </button>
             </>
           )}
-          {loading && (
-            <div className="flex items-center gap-2">
-              <div className="animate-pulse">
-                <div className="h-7 w-16 bg-gray-300 rounded"></div>
-              </div>
-            </div>
-          )}
-          <Link href="https://ghanshyamsingh-dev.vercel.app/" target="_blank">
-            <button
-              className="flex items-center gap-2 bg-[#e94f37] text-white px-4 py-1.5 rounded hover:bg-[#2e3192] hover:text-white text-sm shadow-md transition-all"
-            >
-              <MessageCircle size={16} />
-              Contact Us
-            </button>
-          </Link>
+
+          <a
+            href="https://ghanshyamsingh-dev.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#e94f37] text-white px-4 py-2 rounded-lg hover:bg-[#c73d29] text-sm font-medium shadow-sm transition-colors"
+          >
+            Contact
+          </a>
         </div>
 
-        {/* Mobile Dropdown Menu */}
-        {isOpen && (
-          <div className="md:hidden absolute left-0 top-full bg-white shadow-lg rounded-b-lg flex flex-col gap-4 py-4 px-6 z-50 animate-fade-in w-full">
-            <Link
-              href="/resources"
-              className={isActive('/resources')}
-              onClick={() => setOpen(false)}
-            >
-              Resources
-            </Link>
-            <Link
-              href="/upload"
-              className={isActive('/upload')}
-              onClick={() => setOpen(false)}
-            >
-              Upload
-            </Link>
-            {!user && !loading && (
-              <>
-                <Link
-                  href="/login"
-                  className={isActive('/login')}
-                  onClick={() => setOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link href="/signup" onClick={() => setOpen(false)}>
-                  <button className="bg-[#2e3192] text-white px-4 py-1.5 rounded hover:bg-[#1b1f5e] text-sm w-full text-left transition">
-                    Sign Up
-                  </button>
-                </Link>
-              </>
-            )}
-            {user && !loading && (
-              <>
-                <Link href="/account" onClick={() => setOpen(false)} className="flex items-center gap-2">
-                  <UserCircle size={28} className="text-[#2e3192]" />
-                  <span className="text-gray-700 text-sm">{userName}</span>
-                </Link>
-                <button
-                  onClick={() => { handleLogout(); setOpen(false); }}
-                  className="mt-2 bg-gray-200 text-gray-700 px-3 py-1.5 rounded hover:bg-gray-300 text-sm w-full text-left transition"
-                >
-                  Logout
-                </button>
-              </>
-            )}
-            {loading && (
-              <div className="animate-pulse">
-                <div className="h-7 w-20 bg-gray-300 rounded"></div>
-              </div>
-            )}
-            <Link href="https://ghanshyamsingh-dev.vercel.app/" target="_blank" onClick={() => setOpen(false)}>
-              <button
-                className="flex items-center gap-2 bg-[#e94f37] text-white px-4 py-1.5 rounded hover:bg-[#2e3192] hover:text-white text-sm shadow-md transition-all w-full text-left"
-              >
-                <MessageCircle size={16} />
-                Contact Us
-              </button>
-            </Link>
-          </div>
-        )}
+        {/* Hamburger */}
+        <button
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#2e3192] transition-colors"
+          onClick={() => setOpen((prev) => !prev)}
+          aria-label="Toggle Menu"
+        >
+          {isOpen
+            ? <X size={24} className="text-[#2e3192]" />
+            : <Menu size={24} className="text-[#2e3192]" />}
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      {isOpen && (
+        <div className="md:hidden mt-3 pb-3 border-t border-[#e8eaf0] pt-3 flex flex-col gap-1">
+          <Link href="/resources" className={isMobileActive('/resources')} onClick={() => setOpen(false)}>
+            Resources
+          </Link>
+          <Link href="/upload" className={isMobileActive('/upload')} onClick={() => setOpen(false)}>
+            Upload
+          </Link>
+
+          {!user && !loading && (
+            <>
+              <Link href="/login" className={isMobileActive('/login')} onClick={() => setOpen(false)}>
+                Login
+              </Link>
+              <Link href="/signup" onClick={() => setOpen(false)}>
+                <button className="w-full text-left bg-[#2e3192] text-white px-3 py-2 rounded-lg hover:bg-[#1b1f5e] text-sm transition-colors font-medium mt-1">
+                  Sign Up
+                </button>
+              </Link>
+            </>
+          )}
+
+          {user && !loading && (
+            <>
+              <Link href="/account" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors">
+                <UserCircle size={24} className="text-[#2e3192]" />
+                <span className="text-gray-700 text-sm font-medium">{userName}</span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-left text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-sm transition-colors font-medium"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+            </>
+          )}
+
+          {loading && (
+            <div className="animate-pulse px-3 py-2">
+              <div className="h-4 w-24 bg-gray-200 rounded" />
+            </div>
+          )}
+
+          <a
+            href="https://ghanshyamsingh-dev.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 bg-[#e94f37] text-white px-3 py-2 rounded-lg hover:bg-[#c73d29] text-sm font-medium transition-colors mt-2"
+          >
+            Contact
+          </a>
+        </div>
+      )}
     </nav>
   );
 };

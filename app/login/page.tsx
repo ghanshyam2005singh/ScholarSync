@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Navbar from '../components/Navbar';
+import { Eye, EyeOff, BookOpen } from 'lucide-react';
 
-// Separate component for the login form that uses useSearchParams
 const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -13,9 +14,9 @@ const LoginForm = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +37,8 @@ const LoginForm = () => {
 
       if (signInError) throw signInError;
 
-      // Check if email is verified
       if (!data.user?.email_confirmed_at) {
-        setError('Please verify your email before logging in.');
+        setError('Please verify your email before logging in. Check your inbox for the verification link.');
         setLoading(false);
         return;
       }
@@ -46,118 +46,124 @@ const LoginForm = () => {
       router.push(redirectTo);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message || 'Invalid email or password. Please try again.');
+        const msg = err.message;
+        if (msg.includes('Invalid login credentials')) {
+          setError('Incorrect email or password. Please try again.');
+        } else if (msg.includes('Email not confirmed')) {
+          setError('Please verify your email before logging in.');
+        } else {
+          setError(msg || 'Login failed. Please try again.');
+        }
       } else {
-        setError('Invalid email or password. Please try again.');
+        setError('Login failed. Please try again.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    setError('');
-    setResetSent(false);
-
-    if (!email) {
-      setError('Please enter your email to reset password.');
-      return;
-    }
-
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (resetError) throw resetError;
-      setResetSent(true);
-    } catch {
-      setError('Failed to send reset email. Please check your email address.');
-    }
-  };
-
   return (
-    <div className="flex items-center justify-center pt-20">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 mx-4 border border-[#e0e0e0]">
-        <h1 className="text-3xl font-bold text-center text-[#2e3192] mb-6">
-          Welcome Back
-        </h1>
+    <div className="flex items-center justify-center py-16 px-4">
+      <div className="max-w-md w-full">
+        {/* Logo mark */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 group">
+            <div className="w-10 h-10 rounded-xl bg-[#2e3192] flex items-center justify-center">
+              <BookOpen size={20} className="text-white" />
+            </div>
+            <span className="text-2xl font-bold text-[#2e3192]">ScholarSync</span>
+          </Link>
+          <h2 className="text-gray-500 text-sm mt-2">Sign in to your account</h2>
+        </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <input
-              type="email"
-              placeholder="Enter Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-[#e0e0e0] p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e3192] focus:border-[#2e3192] text-gray-900 bg-white"
-              required
-            />
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-[#e8eaf0]">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-[#e0e0e0] px-4 py-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e3192] focus:border-[#2e3192] text-gray-900 bg-white transition"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-[#e0e0e0] px-4 py-3 pr-11 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e3192] focus:border-[#2e3192] text-gray-900 bg-white transition"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#2e3192] text-white py-3 rounded-lg shadow-lg hover:bg-[#1b1f5e] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold mt-2"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="flex justify-between items-center mt-5 pt-4 border-t border-[#f0f0f0]">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-[#2e3192] hover:underline font-medium"
+            >
+              Forgot password?
+            </Link>
+            <span className="text-sm text-gray-500">
+              No account?{' '}
+              <Link
+                href={`/signup?redirect=${encodeURIComponent(redirectTo)}`}
+                className="text-[#e94f37] font-semibold hover:underline"
+              >
+                Sign up free
+              </Link>
+            </span>
           </div>
-
-          <div>
-            <input
-              type="password"
-              placeholder="Enter Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#e0e0e0] p-3 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2e3192] focus:border-[#2e3192] text-gray-900 bg-white"
-              required
-            />
-          </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          {resetSent && (
-            <p className="text-green-600 text-sm">
-              Password reset email sent! Please check your inbox.
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#2e3192] text-white py-3 rounded-lg shadow-lg hover:bg-[#1b1f5e] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <div className="flex justify-between items-center mt-4">
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            className="text-[#2e3192] hover:underline text-sm font-semibold"
-          >
-            Forgot Password?
-          </button>
-          <span className="text-sm text-gray-600">
-            Don&#39;t have an account?{' '}
-            <a href={`/signup?redirect=${encodeURIComponent(redirectTo)}`} className="text-[#e94f37] font-semibold hover:underline">
-              Signup
-            </a>
-          </span>
         </div>
       </div>
     </div>
   );
 };
 
-// Loading fallback component
 const LoginFormFallback = () => (
-  <div className="flex items-center justify-center pt-20">
-    <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 mx-4 border border-[#e0e0e0]">
-      <div className="animate-pulse">
-        <div className="h-8 bg-gray-300 rounded mb-6 mx-auto w-48"></div>
-        <div className="space-y-4">
-          <div className="h-12 bg-gray-200 rounded"></div>
-          <div className="h-12 bg-gray-200 rounded"></div>
-          <div className="h-12 bg-gray-200 rounded"></div>
-        </div>
+  <div className="flex items-center justify-center py-16 px-4">
+    <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-[#e8eaf0] animate-pulse">
+      <div className="h-10 bg-gray-200 rounded w-40 mx-auto mb-8" />
+      <div className="space-y-4">
+        <div className="h-11 bg-gray-100 rounded-lg" />
+        <div className="h-11 bg-gray-100 rounded-lg" />
+        <div className="h-11 bg-gray-200 rounded-lg" />
       </div>
     </div>
   </div>
 );
 
-// Main component
 const LoginPage = () => {
   return (
     <div className="min-h-screen bg-[#f7f8fa]">

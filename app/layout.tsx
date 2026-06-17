@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Padh-le-bhai",
-  description: "Find and share study resources for your college.",
+  title: "ScholarSync",
+  description: "Discover, share, and download college study resources. Built for students, by students.",
 };
 
 export default function RootLayout({
