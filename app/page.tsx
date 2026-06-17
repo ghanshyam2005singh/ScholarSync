@@ -16,7 +16,7 @@ export default function Home() {
         <div className="relative z-10 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-[#e0e7ff] text-[#2e3192] px-4 py-1.5 rounded-full text-sm font-semibold mb-6">
             <Users size={14} />
-            Trusted by 1,000+ students
+            Trusted by 100+ students
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold mb-5 text-[#2e3192] leading-tight tracking-tight">
