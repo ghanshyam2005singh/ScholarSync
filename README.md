@@ -1,6 +1,6 @@
-# Padh-le-Bhai 📚
+# ScholarSync 📚
 
-Welcome to **Padh-le-Bhai**, a cutting-edge study resource sharing platform developed by **Iron Industry Tech** — a tech startup committed to revolutionizing education through innovative solutions. This product is designed to empower students by providing a seamless way to upload, find, and download educational materials securely.
+Welcome to **ScholarSync**, a cutting-edge study resource sharing platform developed by **Iron Industry Tech** — a tech startup committed to revolutionizing education through innovative solutions. This product is designed to empower students by providing a seamless way to upload, find, and download educational materials securely.
 
 ---
 
@@ -41,8 +41,8 @@ Welcome to **Padh-le-Bhai**, a cutting-edge study resource sharing platform deve
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/padh-le-bhai.git
-   cd padh-le-bhai
+   git clone https://github.com/your-username/ScholarSync.git
+   cd ScholarSync
    ```
 
 2. Install dependencies:
@@ -65,7 +65,7 @@ Welcome to **Padh-le-Bhai**, a cutting-edge study resource sharing platform deve
 ## 📁 Project Structure
 
 ```
-padh-le-bhai/
+ScholarSync/
 ├── app/
 │   ├── components/
 │   ├── resources/
@@ -89,7 +89,7 @@ Deploy the application using platforms like Vercel or Azure. Ensure environment 
 
 ## 🌐 About Ghanshyam Singh
 
-**Ghanshyam Singh** is a forward-thinking developer dedicated to creating impactful products that solve real-world problems. **Padh-le-Bhai** is one of our flagship products, designed to simplify access to educational resources for students worldwide.
+**Ghanshyam Singh** is a forward-thinking developer dedicated to creating impactful products that solve real-world problems. **ScholarSync** is one of our flagship products, designed to simplify access to educational resources for students worldwide.
 
 Visit us at [ghanshyamsingh-dev.vercel.app](https://ghanshyamsingh-dev.vercel.app/) to learn more about our mission and other innovative solutions.
 
